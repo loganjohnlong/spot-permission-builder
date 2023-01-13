@@ -243,14 +243,26 @@ def inject_permission(role_def, permissions_ro, permissions_full, readonly):
     if readonly:
         role_def["properties"]["permissions"][0]["actions"] += permissions_ro
     else:
-        role_def["properties"]["permissions"][0]["actions"] += permissions_ro + permissions_full
+        role_def["properties"]["permissions"][0]["actions"] += (
+            permissions_ro + permissions_full
+        )
     return role_def
 
 
 ################
 # MAIN FUNCTION
 ################
-def generate_azure_config(products, subscriptions, readonly):
+def generate_azure_config(
+    products,
+    readonly,
+    netapp_storage,
+    load_balancer,
+    dns,
+    app_gateways,
+    application_security_groups,
+    stateful,
+    subscription_ids,
+):
 
     role_definition = {
         "properties": {
@@ -270,10 +282,14 @@ def generate_azure_config(products, subscriptions, readonly):
     }
 
     # inject list of subscriptions
-    role_definition["properties"]["assignableScopes"] += ["/subscriptions/" + sub for sub in subscriptions]
+    role_definition["properties"]["assignableScopes"] += [
+        "/subscriptions/" + sub for sub in subscription_ids
+    ]
 
     # inject core permissions
-    role_definition = inject_permission(role_definition, core_read_only, core_full_access, readonly)
+    role_definition = inject_permission(
+        role_definition, core_read_only, core_full_access, readonly
+    )
 
     if "Eco" in products:
         # inject Eco permissions
@@ -290,14 +306,66 @@ def generate_azure_config(products, subscriptions, readonly):
         role_definition = inject_permission(
             role_definition, ocean_read_only, ocean_full_access, readonly
         )
-    else:
-        # This should never happen, but just in case...
-        # inject all permissions
-        role_definition = inject_permission(
+
+    # inject NetApp Storage permissions
+    role_definition = (
+        inject_permission(
             role_definition,
-            set(eco_read_only + elastigroup_read_only + ocean_read_only),
-            set(eco_full_access + elastigroup_full_access + ocean_full_access),
+            netapp_storage_read_only,
+            netapp_storage_full_access,
             readonly,
         )
+        if netapp_storage
+        else role_definition
+    )
 
-    return json.dumps(role_definition)
+    # inject Load Balancer permissions
+    role_definition = (
+        inject_permission(
+            role_definition,
+            load_balancer_read_only,
+            load_balancer_full_access,
+            readonly,
+        )
+        if load_balancer
+        else role_definition
+    )
+
+    # inject DNS permissions
+    role_definition = (
+        inject_permission(role_definition, dns_read_only, dns_full_access, readonly)
+        if dns
+        else role_definition
+    )
+
+    # inject App Gateways permissions
+    role_definition = (
+        inject_permission(
+            role_definition, app_gateways_read_only, app_gateways_full_access, readonly
+        )
+        if app_gateways
+        else role_definition
+    )
+
+    # inject Application Security Groups permissions
+    role_definition = (
+        inject_permission(
+            role_definition,
+            application_security_groups_read_only,
+            application_security_groups_full_access,
+            readonly,
+        )
+        if application_security_groups
+        else role_definition
+    )
+
+    # inject Stateful permissions
+    role_definition = (
+        inject_permission(
+            role_definition, stateful_read_only, stateful_full_access, readonly
+        )
+        if stateful
+        else role_definition
+    )
+
+    return json.dumps(role_definition, indent=4)
