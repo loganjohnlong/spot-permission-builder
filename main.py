@@ -1,6 +1,5 @@
 import click
 import re
-import json
 from azure import generate_azure_config
 
 ################
@@ -61,12 +60,15 @@ def validate_subscription_id(ctx, param, value):
 @click.command()
 @click.option(
     "--cloud",
+    required=True,
     type=click.Choice(cloud_providers, case_sensitive=False),
     callback=validate_cloud,
     help="Cloud provider to build permissions for",
 )
 @click.option(
-    "--products",
+    "--product",
+    "products",
+    required=True,
     type=click.Choice(product_options, case_sensitive=False),
     multiple=True,
     callback=validate_products,
@@ -101,7 +103,7 @@ def validate_subscription_id(ctx, param, value):
     "--application-security-groups",
     is_flag=True,
     default=False,
-    help="Adds permissions for Application Security Groups.",
+    help="Adds permissions for Application Security Groups. (Azure only)",
 )
 @click.option(
     "--stateful",
@@ -116,7 +118,7 @@ def validate_subscription_id(ctx, param, value):
     callback=validate_subscription_id,
     help="Azure Subscription ID. Use this flag multiple times to specify multiple IDs",
 )
-@click.option("--out", "outfile", required=True, type=click.Path(exists=False), help="Output file for the generated config")
+@click.option("--out", "outfile", required=True, type=click.Path(exists=False), help="Output file for the generated JSON config")
 
 ################
 # MAIN FUNCTION
