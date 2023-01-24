@@ -303,7 +303,7 @@ def generate_azure_config(
         role_definition = inject_permission(
             role_definition, eco_read_only, eco_full_access, eco_ro
         )
-    elif "Elastigroup" in products:
+    elif "Elastigroup" in products or "Ocean" in products:
         # inject Elastigroup permissions
         role_definition = inject_permission(
             role_definition, elastigroup_read_only, elastigroup_full_access, elastigroup_ro
