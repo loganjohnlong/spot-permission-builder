@@ -1,12 +1,7 @@
-import click
 import re
+from InquirerPy import inquirer
 from azure import generate_azure_config
-
-################
-# GLOBAL VARIABLES
-################
-cloud_providers = ["AWS", "Azure", "GCP"]
-product_options = ["Eco", "Elastigroup", "Ocean"]
+from aws import generate_aws_config
 
 ################
 # HELPER FUNCTIONS
@@ -14,124 +9,164 @@ product_options = ["Eco", "Elastigroup", "Ocean"]
 def write_config(out, config):
     with open(out, "w") as f:
         f.write(config)
-    click.echo(f"Config written to {out}")
 
-
-################
-# VALIDATION FUNCTIONS
-################
-def validate_cloud(ctx, param, value):
-    if value not in cloud_providers:
-        raise click.BadParameter(
-            f"Invalid cloud provider. Valid options are: {cloud_providers}"
-        )
-    return value
-
-
-def validate_products(ctx, param, value):
-    if not value:
-        raise click.BadParameter("At least one product must be selected.")
-    for product in value:
-        if product not in product_options:
-            raise click.BadParameter(
-                f"Invalid product: {product}. Valid options are {product_options}"
-            )
-    return value
-
-
-def validate_subscription_id(ctx, param, value):
-    if not value:
-        raise click.BadParameter("At least one subscription ID must be provided.")
-    # Regular expression pattern for a valid Azure Subscription ID
-    pattern = re.compile(
-        r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-    )
-    for subscription in value:
-        if not pattern.match(subscription):
-            raise click.BadParameter(
-                "Subscription ID {value} is not valid. Please check the value and try again."
-            )
-    return value
-
-
-################
-# CLI OPTIONS
-################
-@click.command()
-@click.option(
-    "--cloud",
-    required=True,
-    type=click.Choice(cloud_providers, case_sensitive=False),
-    callback=validate_cloud,
-    help="Cloud provider to build permissions for",
-)
-@click.option(
-    "--product",
-    "products",
-    required=True,
-    type=click.Choice(product_options, case_sensitive=False),
-    multiple=True,
-    callback=validate_products,
-    help="Spot products that the customer wishes to use. Use this flag multiple times if specifying multiple products.",
-)
-@click.option(
-    "--readonly",
-    is_flag=True,
-    default=False,
-    help="If present, ALL permissions will be set to read-only.",
-)
-@click.option(
-    "--netapp-storage",
-    is_flag=True,
-    default=False,
-    help="Adds permissions for interfacing with NetApp Storage.",
-)
-@click.option(
-    "--load-balancer",
-    is_flag=True,
-    default=False,
-    help="Adds permissions for load balancers.",
-)
-@click.option("--dns", is_flag=True, default=False, help="Adds permissions for DNS.")
-@click.option(
-    "--app-gateways",
-    is_flag=True,
-    default=False,
-    help="Adds permissions for App Gateways. (Azure only)",
-)
-@click.option(
-    "--application-security-groups",
-    is_flag=True,
-    default=False,
-    help="Adds permissions for Application Security Groups. (Azure only)",
-)
-@click.option(
-    "--stateful",
-    is_flag=True,
-    default=False,
-    help="Adds permissions for preserving state.",
-)
-@click.option(
-    "--subscription-id",
-    "subscription_ids",
-    multiple=True,
-    callback=validate_subscription_id,
-    help="Azure Subscription ID. Use this flag multiple times to specify multiple IDs",
-)
-@click.option("--out", "outfile", required=True, type=click.Path(exists=False), help="Output file for the generated JSON config")
 
 ################
 # MAIN FUNCTION
 ################
-def main(cloud, products, readonly, netapp_storage, load_balancer, dns, app_gateways, application_security_groups, stateful, subscription_ids, outfile):
-    """Builds permissions for a given cloud provider and product(s)"""
+def main():
+    cloud_providers = ["AWS", "Azure", "GCP"]
+    product_options = ["Eco", "Elastigroup", "Ocean"]
 
-    if cloud == "AWS":
-        print("Performing AWS-specific tasks")
-    elif cloud == "Azure":
-        write_config(outfile, generate_azure_config(products, readonly, netapp_storage, load_balancer, dns, app_gateways, application_security_groups, stateful, subscription_ids))
-    elif cloud == "GCP":
-        print("Performing GCP-specific tasks")
+    cloud = inquirer.select(
+        message="Which cloud provider do you want to build permissions for?",
+        choices=cloud_providers,
+    ).execute()
+
+    if cloud == "GCP":
+        product_options.remove("Eco")
+
+    core_ro = inquirer.confirm(
+        message="Do you want the core Spot permissions to be read-only? If you select yes, and then select an option that enables write permissions, you may encounter errors and undefined behavior.",
+        default=False,
+    ).execute()
+
+    products = inquirer.checkbox(
+        message="Which Spot products do you want to use?",
+        choices=product_options,
+        validate=lambda result: len(result) >= 1,
+        invalid_message="You must select at least 1 product",
+        instruction="(select at least 1)",
+    ).execute()
+
+    if "Eco" in products:
+        eco_ro = inquirer.confirm(
+            message="Do you want to use Eco in read-only mode?",
+            default=False,
+        ).execute()
+    else:
+        eco_ro = False
+
+    if "Elastigroup" in products:
+        elastigroup_ro = inquirer.confirm(
+            message="Do you want to use Elastigroup in read-only mode?",
+            default=False,
+        ).execute()
+    else:
+        elastigroup_ro = False
+
+    if "Ocean" in products:
+        ocean_ro = inquirer.confirm(
+            message="Do you want to use Ocean in read-only mode?",
+            default=False,
+        ).execute()
+    else:
+        ocean_ro = False
+
+    if cloud == "Azure":
+        subscription_id = inquirer.text(
+            message="Please enter the Azure Subscription ID you want to use.",
+            validate=lambda result: re.fullmatch(
+                r"^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+                result,
+            ),
+            invalid_message="You must enter exactly 1 Subscription ID in the format of 00000000-0000-0000-0000-000000000000",
+        ).execute()
+
+        netapp_storage = inquirer.confirm(
+            message="Do you want to use NetApp Storage?", default=True
+        ).execute()
+
+        if netapp_storage:
+            netapp_storage_ro = inquirer.confirm(
+                message="Do you want to use NetApp Storage in read-only mode?",
+                default=False,
+            ).execute()
+        else:
+            netapp_storage_ro = False
+
+        load_balancer = inquirer.confirm(
+            message="Do you want to use load balancers?", default=True
+        ).execute()
+
+        if load_balancer:
+            load_balancer_ro = inquirer.confirm(
+                message="Do you want to use load balancers in read-only mode?",
+                default=False,
+            ).execute()
+        else:
+            load_balancer_ro = False
+
+        dns = inquirer.confirm(
+            message="Do you want to use DNS?", default=True
+        ).execute()
+
+        if dns:
+            dns_ro = inquirer.confirm(
+                message="Do you want to use DNS in read-only mode?", default=False
+            ).execute()
+        else:
+            dns_ro = False
+
+        app_gateways = inquirer.confirm(
+            message="Do you want to use App Gateways?", default=True
+        ).execute()
+
+        if app_gateways:
+            app_gateways_ro = inquirer.confirm(
+                message="Do you want to use App Gateways in read-only mode?",
+                default=False,
+            ).execute()
+        else:
+            app_gateways_ro = False
+
+        application_security_groups = inquirer.confirm(
+            message="Do you want to use Application Security Groups?", default=True
+        ).execute()
+
+        if application_security_groups:
+            application_security_groups_ro = inquirer.confirm(
+                message="Do you want to use Application Security Groups in read-only mode?",
+                default=False,
+            ).execute()
+        else:
+            application_security_groups_ro = False
+
+        stateful = inquirer.confirm(
+            message="Do you want to use stateful instances?", default=True
+        ).execute()
+
+        if stateful:
+            stateful_ro = inquirer.confirm(
+                message="Do you want to use stateful instances in read-only mode?",
+                default=False,
+            ).execute()
+        else:
+            stateful_ro = False
+
+        write_config(
+            "out.json",
+            generate_azure_config(
+                core_ro,
+                products,
+                eco_ro,
+                elastigroup_ro,
+                ocean_ro,
+                netapp_storage,
+                netapp_storage_ro,
+                load_balancer,
+                load_balancer_ro,
+                dns,
+                dns_ro,
+                app_gateways,
+                app_gateways_ro,
+                application_security_groups,
+                application_security_groups_ro,
+                stateful,
+                stateful_ro,
+                subscription_id,
+            ),
+        )
 
 
 if __name__ == "__main__":

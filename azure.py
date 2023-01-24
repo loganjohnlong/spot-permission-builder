@@ -253,15 +253,24 @@ def inject_permission(role_def, permissions_ro, permissions_full, readonly):
 # MAIN FUNCTION
 ################
 def generate_azure_config(
+    core_ro,
     products,
-    readonly,
+    eco_ro,
+    elastigroup_ro,
+    ocean_ro,
     netapp_storage,
+    netapp_storage_ro,
     load_balancer,
+    load_balancer_ro,
     dns,
+    dns_ro,
     app_gateways,
+    app_gateways_ro,
     application_security_groups,
+    application_security_groups_ro,
     stateful,
-    subscription_ids,
+    stateful_ro,
+    subscription_id,
 ):
 
     role_definition = {
@@ -282,29 +291,27 @@ def generate_azure_config(
     }
 
     # inject list of subscriptions
-    role_definition["properties"]["assignableScopes"] += [
-        "/subscriptions/" + sub for sub in subscription_ids
-    ]
+    role_definition["properties"]["assignableScopes"] += ["/subscriptions/" + subscription_id]
 
     # inject core permissions
     role_definition = inject_permission(
-        role_definition, core_read_only, core_full_access, readonly
+        role_definition, core_read_only, core_full_access, core_ro
     )
 
     if "Eco" in products:
         # inject Eco permissions
         role_definition = inject_permission(
-            role_definition, eco_read_only, eco_full_access, readonly
+            role_definition, eco_read_only, eco_full_access, eco_ro
         )
     elif "Elastigroup" in products:
         # inject Elastigroup permissions
         role_definition = inject_permission(
-            role_definition, elastigroup_read_only, elastigroup_full_access, readonly
+            role_definition, elastigroup_read_only, elastigroup_full_access, elastigroup_ro
         )
     elif "Ocean" in products:
         # inject Ocean permissions
         role_definition = inject_permission(
-            role_definition, ocean_read_only, ocean_full_access, readonly
+            role_definition, ocean_read_only, ocean_full_access, ocean_ro
         )
 
     # inject NetApp Storage permissions
@@ -313,7 +320,7 @@ def generate_azure_config(
             role_definition,
             netapp_storage_read_only,
             netapp_storage_full_access,
-            readonly,
+            netapp_storage_ro,
         )
         if netapp_storage
         else role_definition
@@ -325,7 +332,7 @@ def generate_azure_config(
             role_definition,
             load_balancer_read_only,
             load_balancer_full_access,
-            readonly,
+            load_balancer_ro,
         )
         if load_balancer
         else role_definition
@@ -333,7 +340,7 @@ def generate_azure_config(
 
     # inject DNS permissions
     role_definition = (
-        inject_permission(role_definition, dns_read_only, dns_full_access, readonly)
+        inject_permission(role_definition, dns_read_only, dns_full_access, dns_ro)
         if dns
         else role_definition
     )
@@ -341,7 +348,7 @@ def generate_azure_config(
     # inject App Gateways permissions
     role_definition = (
         inject_permission(
-            role_definition, app_gateways_read_only, app_gateways_full_access, readonly
+            role_definition, app_gateways_read_only, app_gateways_full_access, app_gateways_ro
         )
         if app_gateways
         else role_definition
@@ -353,7 +360,7 @@ def generate_azure_config(
             role_definition,
             application_security_groups_read_only,
             application_security_groups_full_access,
-            readonly,
+            application_security_groups_ro,
         )
         if application_security_groups
         else role_definition
@@ -362,7 +369,7 @@ def generate_azure_config(
     # inject Stateful permissions
     role_definition = (
         inject_permission(
-            role_definition, stateful_read_only, stateful_full_access, readonly
+            role_definition, stateful_read_only, stateful_full_access, stateful_ro
         )
         if stateful
         else role_definition
