@@ -1,7 +1,7 @@
 import re
 from InquirerPy import inquirer
 from azure import generate_azure_config
-from aws import generate_aws_config
+from gcp import generate_gcp_config
 
 ################
 # HELPER FUNCTIONS
@@ -167,7 +167,18 @@ def main():
                 subscription_id,
             ),
         )
-
+    elif cloud == "GCP":
+        write_config(
+            "out.yaml",
+            generate_gcp_config(
+                core_ro,
+                products,
+                elastigroup_ro,
+                ocean_ro,
+            )
+        )
+    elif cloud == "AWS":
+        print("AWS Not Yet Implemented")
 
 if __name__ == "__main__":
     main()
