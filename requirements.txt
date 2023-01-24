@@ -5,4 +5,5 @@ pathspec==0.10.3
 pfzy==0.3.4
 platformdirs==2.6.2
 prompt-toolkit==3.0.36
+PyYAML==6.0
 wcwidth==0.2.6
