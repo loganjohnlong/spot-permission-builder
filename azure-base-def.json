@@ -1,0 +1,16 @@
+{
+    "properties": {
+        "roleName": "spotCustomRole_1671757595495",
+        "isCustom": true,
+        "description": "Custom Role for Spot Account.",
+        "assignableScopes": [],
+        "permissions": [
+            {
+                "actions": [],
+                "notActions": [],
+                "dataActions": [],
+                "notDataActions": []
+            }
+        ]
+    }
+}

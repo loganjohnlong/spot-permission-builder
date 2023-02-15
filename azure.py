@@ -248,6 +248,21 @@ def inject_permission(role_def, permissions_ro, permissions_full, readonly):
         )
     return role_def
 
+def inject_scope(subscription_id, role_definition):
+    role_definition["properties"]["assignableScopes"] += ["/subscriptions/" + subscription_id]
+
+def generate_azure_eco_permissions(eco_ro, subscription_id):
+    with open("azure-base-def.json", 'r') as file:
+        role_definition = json.load(file)
+        # inject list of subscriptions
+    inject_scope(subscription_id, role_definition)
+        # inject Eco permissions
+    role_definition = inject_permission(
+            role_definition, eco_read_only, eco_full_access, eco_ro
+        )
+    with open("azure-eco-output.json", 'w') as file:
+        file.write(json.dumps(role_definition, indent=4))
+    return
 
 ################
 # MAIN FUNCTION
@@ -273,106 +288,94 @@ def generate_azure_config(
     subscription_id,
 ):
 
-    role_definition = {
-        "properties": {
-            "roleName": "spotCustomRole_1671757595495",
-            "isCustom": True,
-            "description": "Custom Role for Spot Account.",
-            "assignableScopes": [],
-            "permissions": [
-                {
-                    "actions": [],
-                    "notActions": [],
-                    "dataActions": [],
-                    "notDataActions": [],
-                }
-            ],
-        }
-    }
-
-    # inject list of subscriptions
-    role_definition["properties"]["assignableScopes"] += ["/subscriptions/" + subscription_id]
-
-    # inject core permissions
-    role_definition = inject_permission(
-        role_definition, core_read_only, core_full_access, core_ro
-    )
-
     if "Eco" in products:
-        # inject Eco permissions
+        generate_azure_eco_permissions(eco_ro, subscription_id)
+
+    if len(products) > 1:
+        with open("azure-base-def.json", 'r') as file:
+            role_definition = json.load(file)
+
+        # inject list of subscriptions
+        inject_scope(subscription_id, role_definition)
+
+        # inject core permissions
         role_definition = inject_permission(
-            role_definition, eco_read_only, eco_full_access, eco_ro
-        )
-    elif "Elastigroup" in products or "Ocean" in products:
-        # inject Elastigroup permissions
-        role_definition = inject_permission(
-            role_definition, elastigroup_read_only, elastigroup_full_access, elastigroup_ro
-        )
-    elif "Ocean" in products:
-        # inject Ocean permissions
-        role_definition = inject_permission(
-            role_definition, ocean_read_only, ocean_full_access, ocean_ro
+            role_definition, core_read_only, core_full_access, core_ro
         )
 
-    # inject NetApp Storage permissions
-    role_definition = (
-        inject_permission(
-            role_definition,
-            netapp_storage_read_only,
-            netapp_storage_full_access,
-            netapp_storage_ro,
+        if "Elastigroup" in products or "Ocean" in products:
+            # inject Elastigroup permissions
+            role_definition = inject_permission(
+                role_definition, elastigroup_read_only, elastigroup_full_access, elastigroup_ro
+            )
+        if "Ocean" in products:
+            # inject Ocean permissions
+            role_definition = inject_permission(
+                role_definition, ocean_read_only, ocean_full_access, ocean_ro
+            )
+
+        # inject NetApp Storage permissions
+        role_definition = (
+            inject_permission(
+                role_definition,
+                netapp_storage_read_only,
+                netapp_storage_full_access,
+                netapp_storage_ro,
+            )
+            if netapp_storage
+            else role_definition
         )
-        if netapp_storage
-        else role_definition
-    )
 
-    # inject Load Balancer permissions
-    role_definition = (
-        inject_permission(
-            role_definition,
-            load_balancer_read_only,
-            load_balancer_full_access,
-            load_balancer_ro,
+        # inject Load Balancer permissions
+        role_definition = (
+            inject_permission(
+                role_definition,
+                load_balancer_read_only,
+                load_balancer_full_access,
+                load_balancer_ro,
+            )
+            if load_balancer
+            else role_definition
         )
-        if load_balancer
-        else role_definition
-    )
 
-    # inject DNS permissions
-    role_definition = (
-        inject_permission(role_definition, dns_read_only, dns_full_access, dns_ro)
-        if dns
-        else role_definition
-    )
-
-    # inject App Gateways permissions
-    role_definition = (
-        inject_permission(
-            role_definition, app_gateways_read_only, app_gateways_full_access, app_gateways_ro
+        # inject DNS permissions
+        role_definition = (
+            inject_permission(role_definition, dns_read_only, dns_full_access, dns_ro)
+            if dns
+            else role_definition
         )
-        if app_gateways
-        else role_definition
-    )
 
-    # inject Application Security Groups permissions
-    role_definition = (
-        inject_permission(
-            role_definition,
-            application_security_groups_read_only,
-            application_security_groups_full_access,
-            application_security_groups_ro,
+        # inject App Gateways permissions
+        role_definition = (
+            inject_permission(
+                role_definition, app_gateways_read_only, app_gateways_full_access, app_gateways_ro
+            )
+            if app_gateways
+            else role_definition
         )
-        if application_security_groups
-        else role_definition
-    )
 
-    # inject Stateful permissions
-    role_definition = (
-        inject_permission(
-            role_definition, stateful_read_only, stateful_full_access, stateful_ro
+        # inject Application Security Groups permissions
+        role_definition = (
+            inject_permission(
+                role_definition,
+                application_security_groups_read_only,
+                application_security_groups_full_access,
+                application_security_groups_ro,
+            )
+            if application_security_groups
+            else role_definition
         )
-        if stateful
-        else role_definition
-    )
 
-    return json.dumps(role_definition, indent=4)
+        # inject Stateful permissions
+        role_definition = (
+            inject_permission(
+                role_definition, stateful_read_only, stateful_full_access, stateful_ro
+            )
+            if stateful
+            else role_definition
+        )
+
+        with open("azure-non-eco-output.json", 'w') as file:
+            file.write(json.dumps(role_definition, indent=4))
+
+    return

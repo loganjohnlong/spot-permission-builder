@@ -144,9 +144,7 @@ def main():
         else:
             stateful_ro = False
 
-        write_config(
-            "out.json",
-            generate_azure_config(
+        generate_azure_config(
                 core_ro,
                 products,
                 eco_ro,
@@ -165,8 +163,7 @@ def main():
                 stateful,
                 stateful_ro,
                 subscription_id,
-            ),
-        )
+            )
     elif cloud == "GCP":
         write_config(
             "out.yaml",
