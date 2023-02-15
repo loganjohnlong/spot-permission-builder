@@ -147,7 +147,7 @@ def generate_gcp_config(
         role_definition = inject_permission(
             role_definition, elastigroup_read_only, elastigroup_full_access, elastigroup_ro
         )
-    elif "Ocean" in products:
+    if "Ocean" in products:
         # inject Ocean permissions
         role_definition = inject_permission(
             role_definition, ocean_read_only, ocean_full_access, ocean_ro
