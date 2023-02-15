@@ -1,8 +1,14 @@
 {
     "python.formatting.provider": "black",
     "cSpell.words": [
+        "artifacttypes",
+        "Autoscale",
+        "backendhealth",
         "elastigroup",
+        "ipconfigurations",
         "servicemanagement",
+        "sharedkeys",
+        "skus",
         "Spotinst",
         "subnetworks",
         "venv"
